@@ -2,13 +2,12 @@ type t = string
 
 exception InvalidName of string
 let convention = 
-  "Channel names must start with either of following characters: [#,&,+,!] 
-   and can't be longer than 50 characters"
+  "Channel names must start with either of following characters: [#,&,+,!],
+   can't be longer than 50 characters and can't contain spaces and commas"
 
 let to_string name =
   name 
 
-(* RFC 2812 1.3 Channels*)
 let of_string name =
   let check_valid name =
     let length = String.length name and pref = name.[0] in 

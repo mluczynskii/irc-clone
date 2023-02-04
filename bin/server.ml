@@ -2,15 +2,17 @@ open Utils
 open Networking
 
 let host = Unix.inet_addr_loopback
-let port = 9000
+let port = 9001
+let max_capacity = 16
 
 let (>>=) = Lwt.bind
 
 let database = Database.make ()
 
-let send_ch chan msg =
+let send_ch id chan msg =
+  let nick = Id.get_nick id in
   let conns = Database.get_conns database chan in 
-  Lwt_list.iter_p (fun conn -> msg ^ "\n" |> Connection.send conn) conns
+  Lwt_list.iter_p (fun conn -> nick ^ ": " ^ msg ^ "\n" |> Connection.send conn) conns
 
 let on_say conn opt =
   let open Connection in
@@ -18,20 +20,23 @@ let on_say conn opt =
   | Some msg ->
     begin try
       let chan = Database.find database conn.id in
-      send_ch chan msg
+      send_ch conn.id chan msg
     with Database.NotInChannel -> 
       send conn "You're not connected to any channels \n"
     end
-  | None -> Lwt.return_unit
+  | None -> Lwt.return_unit (* TODO *)
 
 let on_join conn chan =
   let open Connection in
   try
     Database.join_chan database conn.id chan;
     "Succesfully joined: " ^ chan ^ "\n" |> send conn
-  with Database.ChannelNotExisting ->
+  with 
+  | Database.ChannelNotExisting ->
     "Channel " ^ chan ^ " doesn't exist. Use /create [channel_name] \n"
     |> send conn
+  | Channel.InvalidName msg ->
+    send conn msg
 
 let on_leave conn =
   let open Connection in
@@ -79,7 +84,8 @@ let rec handle_connection conn () =
       | "/leave" -> "Usage: /leave \n"
       | "/disconnect" -> "Usage: /disconnect \n"
       | "/create" -> "Usage: /create [channel_name] \n"
-      | _ -> "") |> send conn 
+      | _ -> "") 
+      |> send conn 
       >>= handle_connection conn
 
 let rec init conn () =
@@ -102,23 +108,30 @@ let rec init conn () =
           send conn "Invalid nick, try again \n" 
           >>= init conn 
 
-let rec accept_s socket () =
-  Lwt_unix.accept socket >>= 
-  fun (fd, sockaddr) ->
-    let conn = Connection.make fd sockaddr in 
-    init conn () >>= accept_s socket
+let create_socket () =
+  let open Lwt_unix in 
+  let addr = ADDR_INET (Unix.inet_addr_of_string "156.17.150.35", port) in
+  let socket = socket PF_INET SOCK_STREAM 0 in begin 
+    (try 
+      ignore (bind socket addr)
+    with 
+    | Unix.Unix_error(Unix.EADDRINUSE, _, _) as e -> 
+      raise e);
+    listen socket max_capacity;
+    socket 
+  end
 
-let establish_server () =
-  let open Lwt_unix in
-  let addr = ADDR_INET(host, port) in 
-  let socket = socket PF_INET SOCK_STREAM 0 in 
-  (try
-    ignore (bind socket addr)
-   with 
-   | Unix.Unix_error(Unix.EADDRINUSE, _, _) as e -> 
-     raise e);
-  listen socket port;
-  accept_s socket ()
+let establish_server socket = 
+  let rec serve () =
+    Lwt_unix.accept socket 
+    >>= fun (fd, sockaddr) ->
+      let conn = Connection.make fd sockaddr in 
+      let handle_err e = Logs.err (fun m -> m "%s" (Printexc.to_string e)) in
+      Lwt.on_failure (init conn ()) handle_err |> Lwt.return
+    >>= serve 
+  in serve
 
 let _ =
-  establish_server () |> Lwt_main.run
+  let socket = create_socket () in 
+  let serve = establish_server socket in
+  serve () |> Lwt_main.run

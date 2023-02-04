@@ -54,11 +54,15 @@ let join_chan db id chan =
 
 let remove_from_database db id =
   Hashtbl.remove db.nick_to_conn (Id.get_nick id);
-  leave_chan db id
+  if Hashtbl.mem db.id_to_chan id then 
+    leave_chan db id
 
 let create_channel db chan =
   if Hashtbl.mem db.chan_to_conns chan then raise NameTaken else 
   Hashtbl.add db.chan_to_conns chan []  
+
+let get_channel_names db =
+  Hashtbl.to_seq_keys db.chan_to_conns |> List.of_seq
     
 
 

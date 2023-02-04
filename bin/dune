@@ -1,3 +1,9 @@
 (executable
  (name server)
- (libraries lwt lwt.unix logs logs.lwt logs.fmt utils networking))
+ (libraries lwt lwt.unix logs logs.lwt logs.fmt utils networking)
+ (modules server))
+
+(executable
+ (name client)
+ (libraries notty lwt lwt.unix notty.lwt notty.unix)
+ (modules client))

@@ -2,7 +2,7 @@ open Lwt
 
 let host = Unix.inet_addr_loopback
 let port = 9000
-let local_address = Unix.ADDR_INET (host, port)
+let local_address = Unix.ADDR_INET (Unix.inet_addr_of_string "192.168.1.228", port)
 let max_capacity = 10
 
 let counter = ref 0

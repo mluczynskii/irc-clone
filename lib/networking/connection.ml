@@ -18,8 +18,8 @@ let get_id conn = conn.id
 
 let send conn msg =
   Lwt_io.write conn.output msg
- 
-let rec receive conn =
+  
+let receive conn =
   Lwt_io.read_line conn.input >>=
   fun line ->
     try 

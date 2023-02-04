@@ -6,8 +6,7 @@ exception InvalidId
 
 let make_opt nick address = { nick; address }
 let make nick address = 
-  let open Nick in
-  { nick = if nick = "" then None else Some (of_string nick);
+  { nick = if nick = "" then None else Some (Nick.of_string nick);
     address = if address = "" then None else Some address }
 
 let is_valid id =
@@ -19,14 +18,7 @@ let get_nick id =
   | Some nick -> nick
 
 let set_nick id nick =
-  let open Nick in
   if nick = "" then 
     raise InvalidId
   else  
-    id.nick <- Some (of_string nick)
-let set_address id addr =
-  if addr = "" then 
-    raise InvalidId
-  else  
-    id.address <- Some addr
-
+    id.nick <- Some (Nick.of_string nick)
