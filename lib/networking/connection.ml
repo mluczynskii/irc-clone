@@ -17,11 +17,14 @@ let set_id conn id =
 let get_id conn = conn.id
 
 let send conn msg =
-  Lwt_io.write conn.output msg
+  print_endline ("Sending: " ^ msg);
+  Lwt_io.write conn.output msg >>= fun _ ->
+    Lwt_io.flush conn.output
   
 let receive conn =
   Lwt_io.read_line conn.input >>=
   fun line ->
+    print_endline ("Received: " ^ line);
     try 
       Lwt.return line 
     with _ -> raise End_of_file

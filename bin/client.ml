@@ -1,38 +1,40 @@
-open Notty
-open Notty_lwt 
-let port = 9001
+open User
 
-let (>>=) = Lwt.bind
+let rec handle_user conn () =
+  let open Connection in 
+  receive conn.user_input
+  >>= fun msg ->
+    send conn msg
+  >>= handle_user conn
 
-let rec loop t =
-  let img = I.(string A.(bg lightred ++ fg black) "Sample text") in
-  ignore (Term.image t img);
-  loop t
-let interface () =
-  let tc = Unix.(tcgetattr stdin) in
-  Unix.(tcsetattr stdin TCSANOW { tc with c_isig = false });
-  let terminal = Term.create () in
-  loop terminal
+let rec handle_server conn () = 
+  let open Connection in 
+  receive conn.server_input
+  >>= fun msg ->
+    Lwt_io.write Lwt_io.stdout msg 
+  >>= handle_server conn 
 
-let handle_connection () = Lwt.return_unit
-  
-let start () =
-  Lwt.choose [
-    interface ();
-    handle_connection ()
+let handle_connection conn () = 
+  Lwt.join [
+    handle_user conn ();
+    handle_server conn ()
   ]
 
-let _ =
-  let open Unix in
-  if Array.length Sys.argv < 2 then 
-    raise (Invalid_argument "Usage ./client <host-name>");
-  let host_name = Sys.argv.(1) in 
-  let address =
-    try 
-      (gethostbyname host_name).h_addr_list.(0) 
+let create_socket host_name port =
+  let open Lwt_unix in 
+  let address = 
+    try Unix.inet_addr_of_string host_name
     with 
-    | Not_found -> Invalid_argument (host_name ^ ": Host not found") |> raise 
-  in 
-  let socket = socket PF_INET SOCK_STREAM 0 in 
-  connect socket (ADDR_INET(address, port));
-  Lwt_main.run (start ())
+    | Failure _ -> raise (Invalid_argument "Wrong <host-name>") 
+  and sock = socket PF_INET SOCK_STREAM 0 in 
+  ignore (connect sock (ADDR_INET(address, port)));
+  sock 
+
+let _ =
+  if Array.length Sys.argv < 3 then 
+    raise (Invalid_argument "Usage ./client <host-name> <port-name>");
+  let host_name = Sys.argv.(1) and 
+  port = int_of_string Sys.argv.(2) in 
+  let sock = create_socket host_name port in
+  let conn = Connection.make sock in 
+  handle_connection conn () |> Lwt_main.run 

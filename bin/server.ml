@@ -1,8 +1,8 @@
 open Utils 
 open Networking
 
-let host = Unix.inet_addr_loopback
-let port = 9001
+(*let host = Unix.inet_addr_loopback*)
+let port = 9000
 let max_capacity = 16
 
 let (>>=) = Lwt.bind
@@ -24,7 +24,7 @@ let on_say conn opt =
     with Database.NotInChannel -> 
       send conn "You're not connected to any channels \n"
     end
-  | None -> Lwt.return_unit (* TODO *)
+  | None -> Lwt.return_unit 
 
 let on_join conn chan =
   let open Connection in
@@ -110,7 +110,7 @@ let rec init conn () =
 
 let create_socket () =
   let open Lwt_unix in 
-  let addr = ADDR_INET (Unix.inet_addr_of_string "156.17.150.35", port) in
+  let addr = ADDR_INET (Unix.inet_addr_of_string "192.168.1.15", port) in
   let socket = socket PF_INET SOCK_STREAM 0 in begin 
     (try 
       ignore (bind socket addr)
