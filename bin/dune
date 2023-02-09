@@ -5,5 +5,5 @@
 
 (executable
  (name client)
- (libraries notty lwt lwt.unix notty.lwt notty.unix user)
+ (libraries notty lwt lwt.unix lambda-term user)
  (modules client))

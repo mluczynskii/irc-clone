@@ -1,31 +1,44 @@
 open User
 
-let rec handle_user conn () =
+let (>>=) = Lwt.bind
+
+let state = State.make ()
+
+let rec handle_user term conn () =
   let open Connection in 
   receive conn.user_input
   >>= fun msg ->
     send conn msg
-  >>= handle_user conn
+  >>= handle_user term conn
 
-let rec handle_server conn () = 
+let rec handle_server term conn () = 
   let open Connection in 
   receive conn.server_input
   >>= fun msg ->
-    Lwt_io.write Lwt_io.stdout msg 
-  >>= handle_server conn 
+    let open LTerm_text in
+    (match state.st with 
+     | Title -> eval [B_fg LTerm_style.cyan; S msg; E_fg]
+     | Hub -> eval [B_fg LTerm_style.red; S msg; E_fg]
+     | Channel -> eval [B_fg LTerm_style.green; S msg; E_fg])
+    |> LTerm.fprints term 
+  >>= handle_server term conn 
 
 let handle_connection conn () = 
-  Lwt.join [
-    handle_user conn ();
-    handle_server conn ()
-  ]
+  Lazy.force LTerm.stdout
+  >>= fun term ->
+    LTerm.clear_screen term 
+  >>= fun () ->
+    Lwt.choose [
+      handle_user term conn ();
+      handle_server term conn ();
+    ]
 
 let create_socket host_name port =
   let open Lwt_unix in 
   let address = 
     try Unix.inet_addr_of_string host_name
     with 
-    | Failure _ -> raise (Invalid_argument "Wrong <host-name>") 
+    | Failure _ -> raise (Failure "Wrong <host-name>") 
   and sock = socket PF_INET SOCK_STREAM 0 in 
   ignore (connect sock (ADDR_INET(address, port)));
   sock 

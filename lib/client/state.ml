@@ -3,11 +3,21 @@ type state =
 | Hub 
 | Channel 
 
-type t = state ref
+exception UnexpectedChange
+
+type t = 
+  { lock : Mutex.t;
+    mutable st : state }
+
+let make () =
+  { lock = Mutex.create ();
+    st = Title }
 
 let change x state =
-  match !x, state with 
-  | Title, Hub -> x := Hub 
-  | Hub, _ -> x := state 
-  | Channel, Hub -> x := Hub 
-  | _ -> raise (Invalid_argument "State.change")
+  Mutex.lock x.lock;
+  begin match x.st, state with 
+  | Title, Hub | Hub, _ | Channel, Hub -> 
+    x.st <- state
+  | _ -> raise UnexpectedChange
+  end;
+  Mutex.unlock x.lock;

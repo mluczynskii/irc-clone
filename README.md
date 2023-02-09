@@ -4,4 +4,4 @@ Simple IRC-inspired online communicator made as a final project for 'functional 
 
 Prerequisites: 
 - lwt https://github.com/ocsigen/lwt
-- notty https://github.com/pqwy/notty
+- lambda-term https://github.com/ocaml-community/lambda-term

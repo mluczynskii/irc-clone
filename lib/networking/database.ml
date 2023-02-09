@@ -53,9 +53,9 @@ let join_chan db id chan =
   Hashtbl.add db.id_to_chan id chan
 
 let remove_from_database db id =
-  Hashtbl.remove db.nick_to_conn (Id.get_nick id);
   if Hashtbl.mem db.id_to_chan id then 
-    leave_chan db id
+    leave_chan db id;
+  Hashtbl.remove db.nick_to_conn (Id.get_nick id)
 
 let create_channel db chan =
   if Hashtbl.mem db.chan_to_conns chan then raise NameTaken else 
