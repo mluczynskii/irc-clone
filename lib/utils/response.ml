@@ -24,6 +24,6 @@ let of_string str =
       | code :: msg -> Success (int_of_string code, String.concat " " msg)
       | [] -> raise (Invalid_argument "Response.of_string") 
       end
-    | _ -> Message (h, String.concat " " t)
+    | _ -> Message (h ^ " ", String.concat " " t)
     end
   | [] -> raise (Invalid_argument "Response.of_string")

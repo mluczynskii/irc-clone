@@ -1,4 +1,5 @@
 open User
+open Utils
 
 let (>>=) = Lwt.bind
 
@@ -7,26 +8,52 @@ let state = State.make ()
 let rec handle_user term conn () =
   let open Connection in 
   receive conn.user_input
-  >>= fun msg ->
+  >>= fun msg -> 
     send conn msg
   >>= handle_user term conn
+
+let clear term =
+  LTerm.clear_screen term 
+  >>= fun () ->
+    LTerm.goto term {row = 0; col = 0}
 
 let rec handle_server term conn () = 
   let open Connection in 
   receive conn.server_input
   >>= fun msg ->
-    let open LTerm_text in
-    (match state.st with 
-     | Title -> eval [B_fg LTerm_style.cyan; S msg; E_fg]
-     | Hub -> eval [B_fg LTerm_style.red; S msg; E_fg]
-     | Channel -> eval [B_fg LTerm_style.green; S msg; E_fg])
-    |> LTerm.fprints term 
+    let open LTerm_text in let open LTerm_style in
+    (match Response.of_string msg with 
+    | Response.Fail m ->
+      eval [B_fg (rgb 227 57 39); S m; E_fg]
+    | Response.Info m ->
+      eval [B_fg (rgb 235 226 56); S m; E_fg]
+    | Response.Message (nick, m) ->
+      eval [B_fg (rgb 69 61 219); S nick; E_fg; S m]
+    | Response.Success (code, m) ->
+      begin match code with 
+      | 1 -> 
+        State.change state State.Channel;
+        ignore (clear term);
+        eval [B_fg (rgb 22 181 56); S m; E_fg]
+      | 2 ->
+        State.change state State.Hub;
+        ignore (clear term);
+        eval [B_fg (rgb 22 181 56); S m; E_fg]
+      | 3 ->
+        eval [B_fg (rgb 22 181 56); S m; E_fg]
+      | 4 ->
+        State.change state State.Hub;
+        ignore (clear term);
+        eval [B_fg (rgb 22 181 56); S m; E_fg]
+      | _ -> raise Response.UnknownCode
+      end)
+    |> LTerm.fprintls term
   >>= handle_server term conn 
 
 let handle_connection conn () = 
   Lazy.force LTerm.stdout
   >>= fun term ->
-    LTerm.clear_screen term 
+    clear term 
   >>= fun () ->
     Lwt.choose [
       handle_user term conn ();
