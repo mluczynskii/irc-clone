@@ -16,7 +16,7 @@ let make () =
 let change x state =
   Mutex.lock x.lock;
   begin match x.st, state with 
-  | Title, Hub | Hub, _ | Channel, Hub -> 
+  | Title, Hub | Hub, _ | Channel, Hub | Channel, Channel -> 
     x.st <- state
   | _ -> raise UnexpectedChange
   end;

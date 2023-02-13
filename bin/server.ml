@@ -71,19 +71,21 @@ let on_create conn chan =
     |> send conn
   | Channel.InvalidName msg -> Response.Fail msg |> send conn 
 
+
 let rec handle_connection conn () =
   let open Connection in
   receive conn >>=
   fun msg ->
     try
       let msg = Message.parse msg in
-      match msg with 
-      | Say opt -> on_say conn opt >>= handle_connection conn
-      | Join chan -> on_join conn chan >>= handle_connection conn
-      | Leave -> on_leave conn >>= handle_connection conn
+      (match msg with 
+      | Say opt -> on_say conn opt 
+      | Join chan -> on_join conn chan
+      | Leave -> on_leave conn
       | Disconnect -> on_disconnect conn
-      | Create chan -> on_create conn chan >>= handle_connection conn
-      | List -> on_list conn >>= handle_connection conn
+      | Create chan -> on_create conn chan 
+      | List -> on_list conn)
+      >>= handle_connection conn
     with 
     | Message.UnknownCommand ->
       send conn (Response.Fail "Unknown command") >>= handle_connection conn
