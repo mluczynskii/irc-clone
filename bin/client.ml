@@ -17,37 +17,44 @@ let clear term =
   >>= fun () ->
     LTerm.goto term {row = 0; col = 0}
 
-let rec handle_server term conn () = 
-  let open Connection in 
-  receive conn.server_input
-  >>= fun msg ->
-    let open LTerm_text in let open LTerm_style in
-    (match Response.of_string msg with 
+let ev msg term cont =
+  let open LTerm_text in let open LTerm_style in
+    match Response.of_string msg with 
     | Response.Fail m ->
-      eval [B_fg (rgb 227 57 39); S m; E_fg]
+      eval [B_fg (rgb 227 57 39); S m; E_fg] |> cont false
     | Response.Info m ->
-      eval [B_fg (rgb 235 226 56); S m; E_fg]
+      eval [B_fg (rgb 235 226 56); S m; E_fg] |> cont false
     | Response.Message (nick, m) ->
-      eval [B_fg (rgb 69 61 219); S nick; E_fg; S m]
+      eval [B_fg (rgb 69 61 219); S nick; E_fg; S m] |> cont false
     | Response.Success (code, m) ->
       begin match code with 
       | 1 -> 
         State.change state State.Channel;
         ignore (clear term);
-        eval [B_fg (rgb 22 181 56); S m; E_fg]
+        eval [B_fg (rgb 22 181 56); S m; E_fg] |> cont false
       | 2 ->
         State.change state State.Hub;
         ignore (clear term);
-        eval [B_fg (rgb 22 181 56); S m; E_fg]
+        eval [B_fg (rgb 22 181 56); S m; E_fg] |> cont false
       | 3 ->
-        eval [B_fg (rgb 22 181 56); S m; E_fg]
+        eval [B_fg (rgb 22 181 56); S m; E_fg] |> cont false
       | 4 ->
         State.change state State.Hub;
         ignore (clear term);
-        eval [B_fg (rgb 22 181 56); S m; E_fg]
+        eval [B_fg (rgb 22 181 56); S m; E_fg] |> cont false
+      | 5 ->
+        eval [B_fg (rgb 22 181 56); S m; E_fg] |> cont true
       | _ -> raise Response.UnknownCode
-      end)
-    |> LTerm.fprintls term
+      end
+
+let rec handle_server term conn () = 
+  let open Connection in 
+  receive conn.server_input
+  >>= fun msg ->
+    ev msg term 
+    (fun b m ->
+      LTerm.fprintls term m >>= fun () ->
+        if b then exit 0 else Lwt.return_unit)
   >>= handle_server term conn 
 
 let handle_connection conn () = 

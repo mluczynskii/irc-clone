@@ -11,6 +11,8 @@ let leave msg = Success (2, msg)
 let create msg = Success (3, msg)
 let welcome msg = Success (4, msg)
 
+let disconnect msg = Success (5, msg)
+
 let of_string str =
   let msg = String.trim str in
   let xs = Str.split (Str.regexp " +") msg in

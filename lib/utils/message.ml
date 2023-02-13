@@ -3,6 +3,7 @@ type t =
 | Join of Channel.t 
 | Leave
 | Disconnect 
+| List
 | Create of Channel.t
 
 exception UnknownCommand
@@ -29,6 +30,9 @@ let parse_command msg =
     | "/create" ->
       if List.length params != 1 then raise (WrongParams "/create") else 
       Create (List.hd params |> Channel.of_string)
+    | "/list" ->
+      if List.length params != 0 then raise (WrongParams "/list") else 
+      List
     | _ -> raise UnknownCommand
 
 let parse msg =

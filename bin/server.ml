@@ -49,8 +49,16 @@ let on_leave conn =
 
 let on_disconnect conn =
   let open Connection in
-  Database.remove_from_database database conn.id;
-  Lwt.return_unit
+  Response.disconnect ("You have disconnected from the server") |> send conn
+  >>= fun () ->
+    Database.remove_from_database database conn.id;
+    Lwt.return_unit
+
+let on_list conn = 
+  let open Connection in 
+  let conns = Database.get_channel_names database in 
+  let str = String.concat " " conns in 
+  Response.Info str |> send conn 
 
 let on_create conn chan =
   let open Connection in 
@@ -75,6 +83,7 @@ let rec handle_connection conn () =
       | Leave -> on_leave conn >>= handle_connection conn
       | Disconnect -> on_disconnect conn
       | Create chan -> on_create conn chan >>= handle_connection conn
+      | List -> on_list conn >>= handle_connection conn
     with 
     | Message.UnknownCommand ->
       send conn (Response.Fail "Unknown command") >>= handle_connection conn
@@ -85,6 +94,7 @@ let rec handle_connection conn () =
       | "/leave" -> "Usage: /leave"
       | "/disconnect" -> "Usage: /disconnect"
       | "/create" -> "Usage: /create [channel_name]"
+      | "/list" -> "Usage: /list"
       | _ -> "gluurb") 
       |> send conn 
       >>= handle_connection conn
